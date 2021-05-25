@@ -189,3 +189,48 @@ FROM member_order_points AS mop
 WHERE order_date <= '2021-01-31'
 GROUP BY customer_id
 ORDER BY customer_id;
+
+
+-- Bonus 1: join all the things
+
+SELECT
+    sales.customer_id,
+    sales.order_date,
+    menu.product_name,
+    menu.price,
+    CASE WHEN members.customer_id IS NOT NULL
+          AND sales.order_date >= members.join_date THEN 'Y'
+    ELSE 'N' END AS member
+FROM sales
+INNER JOIN menu
+    ON sales.product_id = menu.product_id
+LEFT JOIN members
+    ON sales.customer_id = members.customer_id
+ORDER BY sales.customer_id, sales.order_date;
+
+-- Bonus 2: rank all the things
+
+WITH joined_data AS (
+    SELECT
+        sales.customer_id,
+        sales.order_date,
+        menu.product_name,
+        menu.price,
+        CASE WHEN members.customer_id IS NOT NULL
+            AND sales.order_date >= members.join_date THEN 'Y'
+        ELSE 'N' END AS member
+    FROM sales
+    INNER JOIN menu
+        ON sales.product_id = menu.product_id
+    LEFT JOIN members
+        ON sales.customer_id = members.customer_id
+)
+
+SELECT
+    *,
+    CASE WHEN member = 'Y' THEN
+        DENSE_RANK() OVER(PARTITION BY customer_id, member 
+            ORDER BY order_date)
+    ELSE null END AS ranking
+FROM joined_data
+ORDER BY customer_id, order_date
