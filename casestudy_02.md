@@ -340,5 +340,198 @@ ORDER BY day_of_week;
 |5          |1             |
 |6          |5             |
 
+# B. Runner and Customer Experience
+
+## How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)
+
+Using `2021-01-01` (a Friday) as the first day of the week, we use a _modulo_ operation to find the number of days that has passed since the start of a 1 week period, then subtract by this number to get first 1st day of that 1 week period.
+
+```sql
+WITH runner_signups AS (
+  SELECT
+    runner_id,
+    registration_date,
+    -- modulo by 7 gives numbers of days passed since the start of week
+    -- subtract by this number to get the first day of the week
+    registration_date - ((registration_date - '2021-01-01') % 7)  AS start_of_week
+  FROM pizza_runner.runners
+)
+
+SELECT
+  start_of_week,
+  COUNT(runner_id) AS signups
+FROM runner_signups
+GROUP BY start_of_week
+ORDER BY start_of_week;
+```
+|start_of_week           |signups|
+|------------------------|-------|
+|2021-01-01T00:00:00.000Z|2      |
+|2021-01-08T00:00:00.000Z|1      |
+|2021-01-15T00:00:00.000Z|1      |
+
+## What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?
+
+The time for the runner to arrive at Pizza Runner HQ is derived from `pickup_time - order_time` i.e. the time elapsed between `order_time` when the order was placed and `pickup_time` when the runner arrived at HQ.
+
+`time_to_pickup` is of type `interval`. `date_part()` is used to extract the minutes from the average `time_to_pickup` for each runner.
+
+```sql
+WITH runner_pickups AS (
+  SELECT
+    ro.runner_id,
+    ro.order_id,
+    co.order_time,
+    ro.pickup_time,
+    (pickup_time - order_time) AS time_to_pickup
+  FROM clean_runner_orders AS ro
+  INNER JOIN clean_customer_orders AS co
+    ON ro.order_id = co.order_id
+)
+
+SELECT 
+  runner_id,
+  date_part('minutes', AVG(time_to_pickup)) AS avg_arrival_minutes
+FROM runner_pickups
+GROUP BY runner_id
+ORDER BY runner_id;
+```
+|runner_id               |avg_arrival_minutes|
+|------------------------|-------------------|
+|1                       |15                 |
+|2                       |23                 |
+|3                       |10                 |
+
+## Is there any relationship between the number of pizzas and how long the order takes to prepare?
+
+Based on `pickup_time`, it seems that orders with more pizzas take more time to prepare.
+
+```sql
+-- number of pizzas per customer order
+WITH order_quant AS (
+  SELECT
+    order_id,
+    order_time,
+    COUNT(pizza_id) AS pizzas_ordered
+  FROM clean_customer_orders
+  GROUP BY order_id, order_time
+), 
+-- join customer order to runner orders to match pickup times
+quant_times AS (
+  SELECT
+    ro.order_id,
+    co.order_time,
+    ro.pickup_time,
+    co.pizzas_ordered,
+    (pickup_time - order_time) AS time_to_pickup
+  FROM clean_runner_orders AS ro
+  INNER JOIN order_quant AS co
+    ON ro.order_id = co.order_id
+  WHERE pickup_time IS NOT NULL
+)
+
+SELECT
+  pizzas_ordered,
+  date_part('minutes', AVG(time_to_pickup)) AS avg_time_minutes
+FROM quant_times
+GROUP BY pizzas_ordered
+ORDER BY pizzas_ordered;
+```
+|pizzas_ordered|avg_time_minutes|
+|--------------|----------------|
+|1             |12              |
+|2             |18              |
+|3             |29              |
+
+## What was the average distance travelled for each runner?
+
+```sql
+SELECT
+  runner_id,
+  ROUND(
+    AVG(distance_km), 2
+    ) AS distance_km
+FROM clean_runner_orders
+GROUP BY runner_id
+ORDER BY runner_id;
+```
+|runner_id|avg_distance_km|
+|---------|---------------|
+|1        |15.85          |
+|2        |23.93          |
+|3        |10.00          |
+
+
+## What was the difference between the longest and shortest delivery times for all orders?
+
+```sql
+SELECT
+  MAX(duration_mins) - MIN(duration_mins) AS difference_mins
+FROM clean_runner_orders;
+```
+|difference_mins|
+|---------------|
+|30             |
+
+## What was the average speed for each runner for each delivery and do you notice any trend for these values?
+
+```sql
+-- Count number of pizzas in each order
+WITH order_quant AS (
+  SELECT
+    order_id,
+    order_time,
+    COUNT(pizza_id) AS pizzas_ordered
+  FROM clean_customer_orders
+  GROUP BY order_id, order_time
+)
+
+SELECT
+  ro.order_id,
+  ro.runner_id,
+  co.pizzas_ordered,
+  ro.distance_km,
+  ro.duration_mins,
+  ROUND(60 * ro.distance_km / ro.duration_mins, 2) AS avg_speed 
+FROM clean_runner_orders AS ro
+INNER JOIN order_quant AS co
+  ON ro.order_id = co.order_id
+WHERE pickup_time IS NOT NULL
+ORDER BY avg_speed DESC
+```
+|order_id|runner_id|pizzas_ordered|distance_km|duration_mins|avg_speed|
+|--------|---------|--------------|-----------|-------------|---------|
+|8       |2        |1             |23.4       |15           |93.60    |
+|7       |2        |1             |25         |25           |60.00    |
+|10      |1        |2             |10         |10           |60.00    |
+|2       |1        |1             |20         |27           |44.44    |
+|3       |1        |2             |13.4       |20           |40.20    |
+|5       |3        |1             |10         |15           |40.00    |
+|1       |1        |1             |20         |32           |37.50    |
+|4       |2        |3             |23.4       |40           |35.10    |
+
+Orders shown in decreasing order of average speed.
+
+While the fastest order only carried 1 pizza and the slowest order carried 3 pizzas, there is no clear trend that more pizzas slow down the delivery speed of an order.
+
+## What is the successful delivery percentage for each runner?
+
+```sql
+SELECT
+  runner_id,
+  COUNT(pickup_time) as delivered,
+  COUNT(order_id) AS total,
+  ROUND(100 * COUNT(pickup_time) / COUNT(order_id)) AS delivery_pct
+FROM clean_runner_orders
+GROUP BY runner_id
+ORDER BY runner_id;
+```
+|runner_id|delivered|total|delivery_pct|
+|---------|---------|-----|------------|
+|1        |4        |4    |100         |
+|2        |3        |4    |75          |
+|3        |1        |2    |50          |
+
+
 
 
