@@ -3,6 +3,7 @@
 ## ER Diagram 
 
 ![ER diagram for case study 1](er_diagram_01.PNG)
+
 *Diagram adapted from [case study webpage](https://8weeksqlchallenge.com/case-study-1/)*
 
 ## 1. What is the total amount each customer spent at the restaurant?
