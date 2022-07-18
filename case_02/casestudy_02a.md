@@ -16,7 +16,7 @@
 
 ```sql
 SELECT
-    COUNT(pizza_id) AS pizzas_ordered
+    COUNT(order_item_id) AS pizzas_ordered
 FROM
     clean_customer_orders;
 ```
@@ -69,7 +69,7 @@ GROUP BY runner_id
 ```sql
 SELECT
     pizza_names.pizza_name,
-    COUNT(*) AS pizzas_ordered
+    COUNT(co.order_item_id) AS pizzas_ordered
 FROM clean_customer_orders AS co
 INNER JOIN clean_runner_orders AS ro
     ON co.order_id = ro.order_id
@@ -93,7 +93,7 @@ ORDER BY pizza_name;
 SELECT
     co.customer_id,
     pz.pizza_name,
-    COUNT(*) AS pizzas_ordered
+    COUNT(co.order_item_id) AS pizzas_ordered
 FROM clean_customer_orders AS co
 INNER JOIN pizza_runner.pizza_names AS pz
     ON co.pizza_id = pz.pizza_id
@@ -121,13 +121,12 @@ ORDER BY co.customer_id, pz.pizza_name;
 WITH delivery_counts AS (
     SELECT
         co.order_id,
-        COUNT(*) AS pizzas_delivered
+        COUNT(co.order_item_id) AS pizzas_delivered
     FROM clean_customer_orders AS co
     INNER JOIN clean_runner_orders AS ro
         ON co.order_id = ro.order_id
     WHERE ro.distance_km IS NOT NULL -- filter out pizzas that are not delivered
     GROUP BY co.order_id
-    ORDER BY pizzas_delivered DESC
 )
 SELECT
     order_id,

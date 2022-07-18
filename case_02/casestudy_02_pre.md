@@ -28,6 +28,9 @@ Data issues in the existing schema include:
 
 Data pre-processing steps include:
 
+* Create a new `order_item_id` column that serves as a primary key for this table
+  * Granularity - each row in the table refers to one pizza ordered
+  * Customer may order multiples of the same pizza with identical `extras`/`exclusions` at the same `order_time`. These should not be treated as duplicates.
 * Converting `null` and `NaN` values into blanks `''` in `exclusions` and `extras`
   * Blanks indicate that the customer requested no extras/exclusions for the pizza, whereas `null` values would be ambiguous on this.
 * Saving the transformations in a temporary table
@@ -37,6 +40,7 @@ Data pre-processing steps include:
 DROP TABLE IF EXISTS clean_customer_orders;
 CREATE TEMP TABLE clean_customer_orders AS (
   SELECT
+    ROW_NUMBER() OVER()::int AS order_item_id, --bigint to int
     order_id,
     customer_id,
     pizza_id,
@@ -57,18 +61,20 @@ CREATE TEMP TABLE clean_customer_orders AS (
 
 Preview of `clean_customer_orders`:
 
-|order_id|customer_id|pizza_id|exclusions|extras|order_time|
-|--------|-----------|--------|----------|------|----------|
-|1|101|1| | |2020-01-01 18:05:02.000|
-|2|101|1| | |2020-01-01 19:00:52.000|
-|3|102|1| | |2020-01-02 23:51:23.000|
-|3|102|2| | |2020-01-02 23:51:23.000|
-|4|103|1|4| |2020-01-04 13:23:46.000|
+|order_item_id|order_id|customer_id|pizza_id|exclusions|extras|order_time|
+|-------------|--------|-----------|--------|----------|------|----------|
+|1|1|101|1|||2020-01-01 18:05:02.000|
+|2|2|101|1|||2020-01-01 19:00:52.000|
+|3|3|102|1|||2020-01-02 23:51:23.000|
+|4|3|102|2|||2020-01-02 23:51:23.000|
+|5|4|103|1|4||2020-01-04 13:23:46.000|
+
 
 The column data types are:
 
 |column_name|data_type|
 |-----------|---------|
+|order_item_id|integer|
 |order_id|integer|
 |customer_id|integer|
 |pizza_id|integer|

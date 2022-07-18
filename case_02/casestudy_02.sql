@@ -36,6 +36,7 @@ RETURNING *;
 DROP TABLE IF EXISTS clean_customer_orders;
 CREATE TEMP TABLE clean_customer_orders AS (
   SELECT
+    ROW_NUMBER() OVER()::int AS order_item_id,
     order_id,
     customer_id,
     pizza_id,
