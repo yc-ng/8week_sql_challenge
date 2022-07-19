@@ -1,4 +1,4 @@
-# Case Study 1 - Danny's Diner
+# Case Study 1 - [Danny's Diner](https://8weeksqlchallenge.com/case-study-1/)
 
 ## ER Diagram 
 
@@ -35,7 +35,7 @@ ORDER BY sales.customer_id;
 
 - Customers may have purchased more than one item in a single day
 - `COUNT DISTINCT` counts multiple records on the same day only once
-- Use `GROUP BY` to count for each customer
+- Use `GROUP BY` to count visiting days for each customer
 
 ``` sql
 SELECT 
