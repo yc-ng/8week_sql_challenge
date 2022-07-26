@@ -1,6 +1,8 @@
-# Case Study 2: [Pizza Runner](https://8weeksqlchallenge.com/case-study-2/)
+# Case Study 2: [Pizza Runner](https://8weeksqlchallenge.com/case-study-2/) - Pre-Processing
 
-## ER Diagram 
+We identified some issues with the data, which will require pre-processing before it can be used for further analysis.
+
+### ER Diagram 
 
 ![ER diagram for case study 2](er_diagram_02.PNG)
 
@@ -13,7 +15,7 @@ Note: Pizza toppings are denoted by `topping_id` and multiple toppings for a piz
 |10|104|1|*2, 6*|*1, 4*|2020-01-11 18:34:49.000|
 
 ## Data Issues 
-Data issues in the existing schema include:
+Within this schema, we located data issues in the following tables:
 
 * `customer_orders` table
   * `null` values entered as text
@@ -21,7 +23,7 @@ Data issues in the existing schema include:
 * `runner_orders` table
   * `null` values entered as text
   * using both `NaN` and `null` values
-  * units manually entered in `distance` and `duration` columns
+  * inconsistent units in the `distance` and `duration` columns
 
 ----
 ## Processing `customer_orders`
@@ -40,7 +42,7 @@ Data pre-processing steps include:
 DROP TABLE IF EXISTS clean_customer_orders;
 CREATE TEMP TABLE clean_customer_orders AS (
   SELECT
-    ROW_NUMBER() OVER()::int AS order_item_id, --bigint to int
+    ROW_NUMBER() OVER()::int AS order_item_id, --convert bigint to int
     order_id,
     customer_id,
     pizza_id,
@@ -69,8 +71,7 @@ Preview of `clean_customer_orders`:
 |4|3|102|2|||2020-01-02 23:51:23.000|
 |5|4|103|1|4||2020-01-04 13:23:46.000|
 
-
-The column data types are:
+The column data types of `clean_customer_orders` are as follows:
 
 |column_name|data_type|
 |-----------|---------|
@@ -125,7 +126,8 @@ Preview of `clean_runner_orders`:
 |4|2|2020-01-04 13:53:03.000|23.4|40||
 |5|3|2020-01-08 21:10:57.000|10|15||
 
-The column data types are as follows:
+The column data types of `clean_runner_orders` are as follows:
+
 |column_name|data_type|
 |-----------|---------|
 |order_id   |integer  |

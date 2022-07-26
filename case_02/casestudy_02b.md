@@ -1,16 +1,24 @@
-# Case Study 2: [Pizza Runner](https://8weeksqlchallenge.com/case-study-2/)
+# Case Study 2-B: [Pizza Runner](https://8weeksqlchallenge.com/case-study-2/) - Runner and Customer Experience
 
-## ER Diagram 
+Pizza Runner has also collected some data on their runners and orders. They want to have a better understanding of the order and delivery metrics, such as preparation times and delivery times, so that they can improve the experience for both their runners as well as their customers.
+
+### ER Diagram 
 
 ![ER diagram for case study 2](er_diagram_02.PNG)
 
 *Diagram adapted from [case study webpage](https://8weeksqlchallenge.com/case-study-2/)*
 
-## Part B - Runner and Customer Experience
-### 1. How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)
+## Overview of Runners
+### Q1. How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)
 
 - Define `2021-01-01` (a Friday) as the first day of the week
 - Use modulo `%` operator to find the number of days that has passed since the start of a 1 week period, then subtract by this number to get first 1st day of that 1 week period.
+
+|start_of_week|signups|
+|-------------|-------|
+|2021-01-01|2|
+|2021-01-08|1|
+|2021-01-15|1|
 
 ```sql
 WITH runner_signups AS (
@@ -30,17 +38,20 @@ FROM runner_signups
 GROUP BY start_of_week
 ORDER BY start_of_week;
 ```
-|start_of_week|signups|
-|-------------|-------|
-|2021-01-01|2|
-|2021-01-08|1|
-|2021-01-15|1|
 
 ---
-### 2. What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?
+## Preparation Times
 
-- Time for the runner to arrive at Pizza Runner HQ is the period from `order_time` to `pickup_time` 
+### Q2. What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?
+
+- Assume that the time for the runner to arrive at Pizza Runner HQ is the interval from `order_time` to `pickup_time` 
 - `date_part()` to extract the minutes from the average `time_to_pickup` for each runner
+
+|runner_id               |avg_arrival_minutes|
+|------------------------|-------------------|
+|1                       |15                 |
+|2                       |23                 |
+|3                       |10                 |
 
 ```sql
 WITH runner_pickups AS (
@@ -59,17 +70,19 @@ FROM runner_pickups
 GROUP BY runner_id
 ORDER BY runner_id;
 ```
-|runner_id               |avg_arrival_minutes|
-|------------------------|-------------------|
-|1                       |15                 |
-|2                       |23                 |
-|3                       |10                 |
 
----
-### 3. Is there any relationship between the number of pizzas and how long the order takes to prepare?
+### Q3. Is there any relationship between the number of pizzas and how long the order takes to prepare?
 
 - Count number of pizzas per order
 - Assume that preparation time is the time taken from `order_time` to `pickup_time`
+
+> Based on `pickup_time`, it seems that orders with more pizzas take more time to prepare.
+
+|pizzas_ordered|avg_time_minutes|
+|--------------|----------------|
+|1             |12              |
+|2             |18              |
+|3             |29              |
 
 ```sql
 -- number of pizzas per customer order
@@ -101,18 +114,18 @@ FROM quant_times
 GROUP BY pizzas_ordered
 ORDER BY pizzas_ordered;
 ```
-> Based on `pickup_time`, it seems that orders with more pizzas take more time to prepare.
-
-|pizzas_ordered|avg_time_minutes|
-|--------------|----------------|
-|1             |12              |
-|2             |18              |
-|3             |29              |
-
 ---
-### 4. What was the average distance travelled for each runner?
+## Delivery Analysis
+
+### Q4. What was the average distance travelled for each runner?
 
 - Average distance travelled is calculated per order
+
+|runner_id|avg_distance_km|
+|---------|---------------|
+|1        |15.85          |
+|2        |23.93          |
+|3        |10.00          |
 
 ```sql
 SELECT
@@ -124,28 +137,36 @@ FROM clean_runner_orders
 GROUP BY runner_id
 ORDER BY runner_id;
 ```
-|runner_id|avg_distance_km|
-|---------|---------------|
-|1        |15.85          |
-|2        |23.93          |
-|3        |10.00          |
 
----
-### 5. What was the difference between the longest and shortest delivery times for all orders?
+### Q5. What was the difference between the longest and shortest delivery times for all orders?
+
+|difference_mins|
+|---------------|
+|30             |
 
 ```sql
 SELECT
     MAX(duration_mins) - MIN(duration_mins) AS difference_mins
 FROM clean_runner_orders;
 ```
-|difference_mins|
-|---------------|
-|30             |
 
----
-### 6. What was the average speed for each runner for each delivery and do you notice any trend for these values?
+### Q6. What was the average speed for each runner for each delivery and do you notice any trend for these values?
 
 - Possible hypothesis: number of pizzas may be related to delivery speed
+
+> Orders shown in decreasing order of average speed.  
+> While the fastest order only carried 1 pizza and the slowest order carried 3 pizzas, there is no clear trend that ordering more pizzas is assocaited with a slower delivery.
+
+|order_id|runner_id|pizzas_ordered|distance_km|duration_mins|avg_speed|
+|--------|---------|--------------|-----------|-------------|---------|
+|8       |2        |1             |23.4       |15           |93.60    |
+|7       |2        |1             |25         |25           |60.00    |
+|10      |1        |2             |10         |10           |60.00    |
+|2       |1        |1             |20         |27           |44.44    |
+|3       |1        |2             |13.4       |20           |40.20    |
+|5       |3        |1             |10         |15           |40.00    |
+|1       |1        |1             |20         |32           |37.50    |
+|4       |2        |3             |23.4       |40           |35.10    |
 
 ```sql
 -- Count number of pizzas in each order
@@ -170,25 +191,21 @@ INNER JOIN order_quant AS oq
 WHERE pickup_time IS NOT NULL
 ORDER BY avg_speed DESC
 ```
-> Orders shown in decreasing order of average speed.  
-> While the fastest order only carried 1 pizza and the slowest order carried 3 pizzas, there is no clear trend that more pizzas slow down the delivery speed of an order.
 
-|order_id|runner_id|pizzas_ordered|distance_km|duration_mins|avg_speed|
-|--------|---------|--------------|-----------|-------------|---------|
-|8       |2        |1             |23.4       |15           |93.60    |
-|7       |2        |1             |25         |25           |60.00    |
-|10      |1        |2             |10         |10           |60.00    |
-|2       |1        |1             |20         |27           |44.44    |
-|3       |1        |2             |13.4       |20           |40.20    |
-|5       |3        |1             |10         |15           |40.00    |
-|1       |1        |1             |20         |32           |37.50    |
-|4       |2        |3             |23.4       |40           |35.10    |
-
----
-### 7. What is the successful delivery percentage for each runner?
+### Q7. What is the successful delivery percentage for each runner?
 
 - orders that were not successfully delivered has a `pickup_time` of `NULL`
 - `COUNT()` excludes `NULL` values and is used to count successful deliveries
+
+> A runner is assigned to each order when the order is created. "Unsuccessful" deliveries arise from the restaurant or customer cancelling the order before the pizzas are picked up for delivery. 
+
+> There is one more runner who signed up recently but has not been assigned any orders yet, so the runner does not show up in the results.
+
+|runner_id|total|delivered|delivery_pct|
+|---------|-----|---------|------------|
+|1|4|4|100.0|
+|2|4|3|75.0|
+|3|2|1|50.0|
 
 ```sql
 SELECT
@@ -200,13 +217,3 @@ FROM clean_runner_orders
 GROUP BY runner_id
 ORDER BY runner_id;
 ```
-|runner_id|total|delivered|delivery_pct|
-|---------|-----|---------|------------|
-|1|4|4|100.0|
-|2|4|3|75.0|
-|3|2|1|50.0|
-
-
-
-
-
