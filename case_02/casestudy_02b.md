@@ -4,9 +4,9 @@ Pizza Runner has also collected some data on their runners and orders. They want
 
 ### ER Diagram 
 
-![ER diagram for case study 2](er_diagram_02.PNG)
+![ER diagram for case study 2](er_diagram_02_processed.PNG)
 
-*Diagram adapted from [case study webpage](https://8weeksqlchallenge.com/case-study-2/)*
+*Diagram adapted from [case study webpage](https://8weeksqlchallenge.com/case-study-2/), after data has been pre-processed.*
 
 ## Overview of Runners
 ### Q1. How many runners signed up for each 1 week period? (i.e. week starts 2021-01-01)

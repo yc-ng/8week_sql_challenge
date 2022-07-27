@@ -1,12 +1,16 @@
-# Case Study 2: [Pizza Runner](https://8weeksqlchallenge.com/case-study-2/)
+# Case Study 2-C: [Pizza Runner](https://8weeksqlchallenge.com/case-study-2/) - Ingredient Optimization
 
-## ER Diagram 
+Customers may request to add extra or exclude particular toppings from the pizzas they ordered. Pizza Runner would like to know which toppings customers tend to add or exclude based on the data collected so far.
 
-![ER diagram for case study 2](er_diagram_02.PNG)
+In addition, Pizza Runner also requested us to help generate order items and ingredient lists for each pizza ordered, including extras and exclusions. These would be helpful for the teams in charge of taking orders and preparing the pizzas.
 
-*Diagram adapted from [case study webpage](https://8weeksqlchallenge.com/case-study-2/)*
+### ER Diagram 
 
-## Part C - Ingredient Optimization
+![ER diagram for case study 2](er_diagram_02_processed.PNG)
+
+*Diagram adapted from [case study webpage](https://8weeksqlchallenge.com/case-study-2/), after data has been pre-processed.*
+
+## Standard Pizza Toppings
 
 Note that pizza recipes, order extras and/or exclusions may include variable numbers of toppings.The toppings are stored as comma-separated strings of `topping_id`s, each referring to a specific topping. 
 
@@ -29,10 +33,15 @@ CREATE TEMP TABLE recipe_topping AS(
 )
 ```
 
-### 1. What are the standard ingredients for each pizza?
+### Q1. What are the standard ingredients for each pizza?
 
 - Join the lookup table to `pizza_names` and `pizza_toppings` to get the pizza and topping names
 - Use `string_agg()` to concatenate toppings for each pizza into a single string for readability
+
+|pizza_name|standard_toppings|
+|----------|-----------------|
+|Meatlovers|Bacon, BBQ Sauce, Beef, Cheese, Chicken, Mushrooms, Pepperoni, Salami|
+|Vegetarian|Cheese, Mushrooms, Onions, Peppers, Tomatoes, Tomato Sauce|
 
 ```sql
 SELECT 
@@ -46,17 +55,19 @@ INNER JOIN pizza_toppings AS pt
 GROUP BY pn.pizza_name
 ORDER BY pn.pizza_name;
 ```
-|pizza_name|standard_toppings|
-|----------|-----------------|
-|Meatlovers|Bacon, BBQ Sauce, Beef, Cheese, Chicken, Mushrooms, Pepperoni, Salami|
-|Vegetarian|Cheese, Mushrooms, Onions, Peppers, Tomatoes, Tomato Sauce|
 
 ---
-### 2. What was the most commonly added extra?
+## Analysis of Extra and Excluded Toppings
+
+### Q2. What was the most commonly added extra?
 
 - Use `string_to_array()` to split extras into separate rows
 - Join extras based on `topping_id` to get their names
 - Count how often each extra was added, and retrieve the most common
+
+|extra|pizza_count|
+|-----|-----------|
+|Bacon|4|
 
 ```sql
 WITH order_extras AS (
@@ -80,14 +91,14 @@ GROUP BY pt.topping_name
 ORDER BY pizza_count DESC
 LIMIT 1;
 ```
-|extra|pizza_count|
-|-----|-----------|
-|Bacon|4|
 
----
-### 3. What was the most common exclusion?
+### Q3. What was the most common exclusion?
 
-- Same approach as question 2, but for `exclusions` instead of extras
+- Same approach as Question 2, but for `exclusions` instead of extras.
+
+|exclusion|pizza_count|
+|---------|-----------|
+|Cheese|4|
 
 ```sql
 WITH order_exclusions AS (
@@ -111,17 +122,16 @@ GROUP BY pt.topping_name
 ORDER BY pizza_count DESC
 LIMIT 1;
 ```
-|exclusion|pizza_count|
-|---------|-----------|
-|Cheese|4|
 
 ---
-### 4. Generate an order item for each record in the `customers_orders` table in the format of one of the following:
+## Generating item lists for each pizza
 
-- `Meat Lovers`
-- `Meat Lovers - Exclude Beef`
-- `Meat Lovers - Extra Bacon`
-- `Meat Lovers - Exclude Cheese, Bacon - Extra Mushroom, Peppers`
+### Q4. Generate an order item for each record in the `customers_orders` table in the format of one of the following:
+
+> - Meat Lovers
+> - Meat Lovers - Exclude Beef
+> - Meat Lovers - Extra Bacon
+> - Meat Lovers - Exclude Cheese, Bacon - Extra Mushroom, Peppers
 
 * Approach:
   * Format is `(pizza name) - Exclude (exclusions) - Extra (extras)`
@@ -141,8 +151,27 @@ LIMIT 1;
     * Concatenate pizza name, exclusions and extras in that order
       * Lack of exclusions/extras are considered `NULL` and are automatically omitted
 
+Table of orders with with order items:
+
+|order_item_id|order_id|customer_id|order_item|
+|-------------|--------|-----------|----------|
+|1|1|101|Meatlovers|
+|2|2|101|Meatlovers|
+|3|3|102|Meatlovers|
+|4|3|102|Vegetarian|
+|5|4|103|Meatlovers  - Exclude Cheese|
+|6|4|103|Meatlovers  - Exclude Cheese|
+|7|4|103|Vegetarian  - Exclude Cheese|
+|8|5|104|Meatlovers - Extra Bacon|
+|9|6|101|Vegetarian|
+|10|7|105|Vegetarian - Extra Bacon|
+|11|8|102|Meatlovers|
+|12|9|103|Meatlovers  - Exclude Cheese - Extra Bacon, Chicken|
+|13|10|104|Meatlovers|
+|14|10|104|Meatlovers  - Exclude BBQ Sauce, Mushrooms - Extra Bacon, Cheese|
+
 <details>
-<summary>Show/Hide SQL query</summary>
+<summary>Click to Show/Hide SQL query</summary>
 
 ```sql
 -- list of extras per pizza ordered
@@ -209,27 +238,9 @@ ORDER BY co.order_item_id;
 ```
 </details>
 <br>
-Table of orders with with order items
-
-|order_item_id|order_id|customer_id|order_item|
-|-------------|--------|-----------|----------|
-|1|1|101|Meatlovers|
-|2|2|101|Meatlovers|
-|3|3|102|Meatlovers|
-|4|3|102|Vegetarian|
-|5|4|103|Meatlovers  - Exclude Cheese|
-|6|4|103|Meatlovers  - Exclude Cheese|
-|7|4|103|Vegetarian  - Exclude Cheese|
-|8|5|104|Meatlovers - Extra Bacon|
-|9|6|101|Vegetarian|
-|10|7|105|Vegetarian - Extra Bacon|
-|11|8|102|Meatlovers|
-|12|9|103|Meatlovers  - Exclude Cheese - Extra Bacon, Chicken|
-|13|10|104|Meatlovers|
-|14|10|104|Meatlovers  - Exclude BBQ Sauce, Mushrooms - Extra Bacon, Cheese|
 
 ---
-### 5. Generate an alphabetically ordered comma separated ingredient list for each pizza order from the customer_orders table and add a 2x in front of any relevant ingredients
+### Q5. Generate an alphabetically ordered comma separated ingredient list for each pizza order from the customer_orders table and add a 2x in front of any relevant ingredients
 
 - For example: `Meat Lovers: 2xBacon, Beef, ... , Salami`
 
@@ -246,10 +257,29 @@ Table of orders with with order items
     * join to `pizza_toppings`
     * append `(quantity)x` 
 
-<details>
-<summary>Show/Hide SQL query</summary>
+Table of orders with ingredient lists
+
+|order_item_id|order_id|customer_id|ingredient_list|
+|-------------|--------|-----------|---------------|
+|1|1|101|Meatlovers: Bacon, BBQ Sauce, Beef, Cheese, Chicken, Mushrooms, Pepperoni, Salami|
+|2|2|101|Meatlovers: Bacon, BBQ Sauce, Beef, Cheese, Chicken, Mushrooms, Pepperoni, Salami|
+|3|3|102|Meatlovers: Bacon, BBQ Sauce, Beef, Cheese, Chicken, Mushrooms, Pepperoni, Salami|
+|4|3|102|Vegetarian: Cheese, Mushrooms, Onions, Peppers, Tomato Sauce, Tomatoes|
+|5|4|103|Meatlovers: Bacon, BBQ Sauce, Beef, Chicken, Mushrooms, Pepperoni, Salami|
+|6|4|103|Meatlovers: Bacon, BBQ Sauce, Beef, Chicken, Mushrooms, Pepperoni, Salami|
+|7|4|103|Vegetarian: Mushrooms, Onions, Peppers, Tomato Sauce, Tomatoes|
+|8|5|104|Meatlovers: 2x Bacon, BBQ Sauce, Beef, Cheese, Chicken, Mushrooms, Pepperoni, Salami|
+|9|6|101|Vegetarian: Cheese, Mushrooms, Onions, Peppers, Tomato Sauce, Tomatoes|
+|10|7|105|Vegetarian: Bacon, Cheese, Mushrooms, Onions, Peppers, Tomato Sauce, Tomatoes|
+|11|8|102|Meatlovers: Bacon, BBQ Sauce, Beef, Cheese, Chicken, Mushrooms, Pepperoni, Salami|
+|12|9|103|Meatlovers: 2x Bacon, BBQ Sauce, Beef, 2x Chicken, Mushrooms, Pepperoni, Salami|
+|13|10|104|Meatlovers: Bacon, BBQ Sauce, Beef, Cheese, Chicken, Mushrooms, Pepperoni, Salami|
+|14|10|104|Meatlovers: 2x Bacon, Beef, 2x Cheese, Chicken, Pepperoni, Salami|
 
 The first query is saved as a `TEMP TABLE` which is also used to help answer question 6.
+<details>
+<summary>Click to Show/Hide SQL query</summary>
+
 ```sql
 -- save temp table to be used for the next question
 -- compile toppings for each pizza
@@ -283,7 +313,12 @@ CREATE TEMP TABLE order_item_toppings AS (
     )
 );
 ```
+</details>
+<br>
 The following query uses the previous temp table to count the toppings for each pizza and generate its ingredient list.
+<details>
+<summary>Click to Show/Hide SQL query</summary>
+
 ```sql
 -- count quantity of toppings for each pizza ordered
 WITH item_topping_quantity AS (
@@ -330,34 +365,32 @@ LEFT JOIN order_item_ingredient_lists AS il
 ORDER BY order_item_id;
 ```
 </details>
-<br>
-Table of orders with ingredient lists
-
-|order_item_id|order_id|customer_id|ingredient_list|
-|-------------|--------|-----------|---------------|
-|1|1|101|Meatlovers: Bacon, BBQ Sauce, Beef, Cheese, Chicken, Mushrooms, Pepperoni, Salami|
-|2|2|101|Meatlovers: Bacon, BBQ Sauce, Beef, Cheese, Chicken, Mushrooms, Pepperoni, Salami|
-|3|3|102|Meatlovers: Bacon, BBQ Sauce, Beef, Cheese, Chicken, Mushrooms, Pepperoni, Salami|
-|4|3|102|Vegetarian: Cheese, Mushrooms, Onions, Peppers, Tomato Sauce, Tomatoes|
-|5|4|103|Meatlovers: Bacon, BBQ Sauce, Beef, Chicken, Mushrooms, Pepperoni, Salami|
-|6|4|103|Meatlovers: Bacon, BBQ Sauce, Beef, Chicken, Mushrooms, Pepperoni, Salami|
-|7|4|103|Vegetarian: Mushrooms, Onions, Peppers, Tomato Sauce, Tomatoes|
-|8|5|104|Meatlovers: 2x Bacon, BBQ Sauce, Beef, Cheese, Chicken, Mushrooms, Pepperoni, Salami|
-|9|6|101|Vegetarian: Cheese, Mushrooms, Onions, Peppers, Tomato Sauce, Tomatoes|
-|10|7|105|Vegetarian: Bacon, Cheese, Mushrooms, Onions, Peppers, Tomato Sauce, Tomatoes|
-|11|8|102|Meatlovers: Bacon, BBQ Sauce, Beef, Cheese, Chicken, Mushrooms, Pepperoni, Salami|
-|12|9|103|Meatlovers: 2x Bacon, BBQ Sauce, Beef, 2x Chicken, Mushrooms, Pepperoni, Salami|
-|13|10|104|Meatlovers: Bacon, BBQ Sauce, Beef, Cheese, Chicken, Mushrooms, Pepperoni, Salami|
-|14|10|104|Meatlovers: 2x Bacon, Beef, 2x Cheese, Chicken, Pepperoni, Salami|
 
 ---
-### 6. What is the total quantity of each ingredient used in all delivered pizzas sorted by most frequent first?
+## Ingredient Usage
+
+### Q6. What is the total quantity of each ingredient used in all delivered pizzas sorted by most frequent first?
 
 - Only include orders that were delivered in `runner_orders`
 - Join to `customer_orders` to filter delivered orders
 - Join to `order_item_toppings` to filter delivered pizzas
 - Join to `pizza_toppings` to retrieve topping/ingredient names
 - Count quantity of each ingredient used across all delivered pizzas
+
+|topping_name|quantity_used|
+|------------|-------------|
+|Bacon|12|
+|Mushrooms|11|
+|Cheese|10|
+|Beef|9|
+|Chicken|9|
+|Pepperoni|9|
+|Salami|9|
+|BBQ Sauce|8|
+|Onions|3|
+|Peppers|3|
+|Tomato Sauce|3|
+|Tomatoes|3|
 
 ```sql
 -- filter only for orders and pizzas that were delivered
@@ -375,18 +408,3 @@ WHERE ro.pickup_time IS NOT NULL -- only delivered pizzas
 GROUP BY pt.topping_name
 ORDER BY quantity_used DESC;
 ```
-|topping_name|quantity_used|
-|------------|-------------|
-|Bacon|12|
-|Mushrooms|11|
-|Cheese|10|
-|Beef|9|
-|Chicken|9|
-|Pepperoni|9|
-|Salami|9|
-|BBQ Sauce|8|
-|Onions|3|
-|Peppers|3|
-|Tomato Sauce|3|
-|Tomatoes|3|
-
